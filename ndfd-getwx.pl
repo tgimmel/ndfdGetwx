@@ -3,19 +3,24 @@ use strict;
 use Weather::NWS::NDFDgen;
 use Data::Dumper;
 use XML::Simple qw(:strict);
-use DateTime;
 use feature qw/say/;
+use Getopt::Std;
 
-$Data::Dumper::Indent = 3;
-my ($start_t, $end_t, $debug, $c, $d);
-$debug = 1;
+our ($opt_d);
+getopts('d');
+
+
+#$Data::Dumper::Indent = 3;
+my ($start_t, $end_t, $debug, $c, $d, $timekey);
+if ($opt_d) { $debug = 1 };
 
 #print Dumper @rawtime;
 $start_t = scalar localtime(time);
 #$end_t = scalar localtime(time + 604800);   #7 days later
-$end_t = scalar localtime(time + 259200);   #3 days later
-print "Scalar Start time: $start_t \n";
-print "Scalar End Time: $end_t\n";
+$end_t = scalar localtime(time + 432000);   #5 days later
+#$end_t = scalar localtime(time + 259200);   #3 days later
+if ($debug) {print "Scalar Start time: $start_t \n";}
+if ($debug) {print "Scalar End Time: $end_t\n";}
 
 my $ndfdgen = Weather::NWS::NDFDgen->new();
 my ($latitude, $longitude) = ('37.8399', '-87.582');
@@ -25,7 +30,7 @@ my ($latitude, $longitude) = ('37.8399', '-87.582');
 $ndfdgen->set_latitude($latitude);
 $ndfdgen->set_longitude($longitude);
 my $product = 'Time-Series';
-$ndfdgen->set_product($product);
+$ndfdgen->set_product($product) or die;
 $ndfdgen->set_start_time($start_t) or die;
 $ndfdgen->set_end_time($end_t) or die;
 
@@ -40,7 +45,6 @@ $ndfdgen->set_weather_parameters(
 
 my $xml = $ndfdgen->get_forecast_xml();
 #if ($debug) { print Dumper $xml};
-
 my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => []);
 
 my $forcast = $xs->XMLin($xml);
@@ -67,58 +71,98 @@ if ($debug) {
     say "3 hour dewpoint time layout $dp_time";
     say "Humidity temp time layout $hd_time";
 }
-my %timekey;
+my %timeinfo;
+
 for ($c = 0; $c <= @{$time} - 1; $c++) {
-    say $time->[$c]->{'layout-key'}[0];              #This is the Time Key at @c
+#    say $time->[$c]->{'layout-key'}[0];              #This is the Time Key at @c
+    $timekey = $time->[$c]->{'layout-key'}[0];
     $svt = $time->[$c]->{'start-valid-time'};        #iterate over times
+    $timeinfo{$timekey} = [] unless $timeinfo{$timekey};
     for ($d = 0; $d <= @{$svt} - 1; $d++) {
-        say $svt->[$d];                              #each of the time codes
-        
+#        say $svt->[$d];                              #each of the time codes
+        my $t = $svt->[$d];
+        $t =~ /\d{4}-(\d{2}-\d{2})T(\d{2}:\d{2}):00-\d{2}:00/;
+        $t = $1 . " " . $2;
+        push (@{$timeinfo{$timekey}}, $t);
     }
 }
-
+if ($debug) {
+    say "Time Info";
+    print Dumper %timeinfo;
+}
 my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd);
-
+my $k = 0;
 my $s = @{$ht};
-print "Scaler $s\n";
-print "Next 7 Day Highs\n";
+unless (!$debug) { print "Scaler $s\n"; }
+say "Next $s Day Highs";
 for ($c = 0; $c <= (@{$ht} - 1); $c++) {
-    say $ht->[$c];
+    print "@{$timeinfo{$ht_time}}[$c] ";
+    say "$ht->[$c]F  ";
     push(@hitemp, $ht->[$c]);
 }
 print "\n";
-print "Next 7 day Lows \n";
+my $l = @{$lt};
+print "Next $l day Lows \n";
 for ($c = 0; $c <= (@{$lt} - 1); $c++) {
-    print $lt->[$c] . " ";
+    print "@{$timeinfo{$lt_time}}[$c] ";
+    say "$lt->[$c]F ";
     push (@lowtemp, $lt->[$c]);
 }
 print "\n";
 print "3 Hourly Temperature\n";
 for ($c = 0; $c <= (@{$hrtmp} - 1); $c++) {
-    print $hrtmp->[$c] . " ";
+    print "@{$timeinfo{$hrtmp_time}}[$c] ";
+    $k++;
+    print "$hrtmp->[$c] F  ";
+    if ($k == 4) {
+        print "\n";
+        $k = 0;
+    }
     push(@hrlytmp, $hrtmp->[$c]);
 }
 print "\n";
 print "3 Hourly Dewpoint\n";
+$k = 0;
 for ($c = 0; $c <= (@{$dp} - 1); $c++) {
-    print $dp->[$c] . " ";
+    print "@{$timeinfo{$dp_time}}[$c] ";
+    $k++;
+    print "$dp->[$c] F  ";
+    if ($k == 4) {
+        print "\n";
+        $k = 0;
+    }
     push(@hrlydp, $dp->[$c]);
 }
 print "\n";
 print "3 Hourly Humidity\n";
+$k = 0;
 for ($c = 0; $c <= (@{$hd} - 1); $c++) {
-    print $hd->[$c] . " ";
+    print "@{$timeinfo{$hd_time}}[$c] ";
+    $k++;
+    print "$hd->[$c] F  ";
+    if ($k == 4) {
+        print "\n";
+        $k = 0;
+    }
     push(@hrlyhd, $hd->[$c]);
 }
 print "\n";
-#print $forcast->{data}[0]->{parameters}[0]->{temperature}[0]->{value}[0] . "\n";
-#print $forcast->{data}[0]->{parameters}[0]->{temperature}[0]->{value}[1] . "\n";
-#print $forcast->{data}[0]->{parameters}[0]->{temperature}[0]->{value}[2] . "\n";
-#print Dumper $forcast;
+#forcast();
+
 
 #print Dumper @products;
 #print Dumper @weather_params;
+sub forcast {
+my ($ele, $timeinfo, $hitemp) = @_;
+my $c;
+say "Next $s Day Highs";
+    for ($c = 0; $c <= (@{$ht} - 1); $c++) {
+        say (@{$timeinfo{$ht_time}}[$c]);
+        say "$ht->[$c] ";
 
+    }
+print "\n";
+}
 
 
 
