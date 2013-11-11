@@ -5,6 +5,10 @@ use Data::Dumper;
 use XML::Simple qw(:strict);
 use feature qw/say/;
 use Getopt::Std;
+use GD;
+use GD::Graph::linespoints;
+use GD::Text;
+use CGI;
 
 our ($opt_d);
 getopts('d');
@@ -40,6 +44,7 @@ $ndfdgen->set_weather_parameters(
            'Dewpoint Temperature' => 1,
               'Relative Humidity' => 1,
            '3 Hourly Temperature' => 1,
+             'Cloud Cover Amount' => 1,
 );
 
 
@@ -90,15 +95,18 @@ if ($debug) {
     say "Time Info";
     print Dumper %timeinfo;
 }
-my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd);
+my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @hrlytmp_time);
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
 say "Next $s Day Highs";
 for ($c = 0; $c <= (@{$ht} - 1); $c++) {
     print "@{$timeinfo{$ht_time}}[$c] ";
-    say "$ht->[$c]F  ";
+    say
+
+    "$ht->[$c]F  ";
     push(@hitemp, $ht->[$c]);
+    push(@hitemp_time, @{$timeinfo{$ht_time}}[$c]);
 }
 print "\n";
 my $l = @{$lt};
@@ -119,6 +127,7 @@ for ($c = 0; $c <= (@{$hrtmp} - 1); $c++) {
         $k = 0;
     }
     push(@hrlytmp, $hrtmp->[$c]);
+    push(@hrlytmp_time, @{$timeinfo{$hrtmp_time}}[$c]);
 }
 print "\n";
 print "3 Hourly Dewpoint\n";
@@ -163,7 +172,85 @@ say "Next $s Day Highs";
     }
 print "\n";
 }
+#my $gd_text = GD::Text->new() or die;
+#$gd_text->set_font(gdMediumBoldFont, 18);
+my $q = new CGI;
 
+my $font_dir = '/usr/local/share/fonts';
+my $font_file = "$font_dir/freeSans.ttf";
+
+my @data = (
+    [@hitemp_time],
+    [@hitemp],
+    [@lowtemp],
+    #[ sort { $a <=> $b } (1, 2, 5, 6, 3, 1.5, 1, 3, 4) ]
+  );
+if ($debug) { print Dumper @data; }
+my $graph = GD::Graph::linespoints->new(640, 480);
+$graph->set(
+      x_label           => 'Date-Time',
+      y_label           => 'Temperature',
+      title             => 'High and Low Temperatures',
+      y_max_value       => 100,
+      transparent       => 0,
+      y_tick_number     => 8,
+      bgclr             => 'white',
+      show_values       => 1,
+      long_ticks        => 1,
+      legend_placement  => 'RC',
+   legend_marker_width  => 12,
+   legend_marker_height => 12,
+      markers           => [ 1, 5 ],
+      #y_label_skip      => 2
+  ) or die $graph->error;
+$graph->set_legend( 'High Temp', 'Low Temp');
+$graph->set_title_font($font_file, 20);
+$graph->set_x_label_font($font_file, 16);
+$graph->set_y_label_font($font_file, 16);
+$graph->set_x_axis_font($font_file, 11);
+$graph->set_y_axis_font($font_file, 11);
+$graph->set_legend_font($font_file, 9);
+my $gd = $graph->plot(\@data) or die $graph->error;
+open(IMG, '>HighTemp.png') or die $!;
+  binmode IMG;
+  print IMG $gd->png;
+  close IMG;
+
+
+my @data2 = (
+    [@hrlytmp_time],
+    [@hrlytmp],
+    [@hrlydp],
+    [@hrlyhd],
+);
+if ($debug) { print Dumper @data2; }
+my $graph2 = GD::Graph::linespoints->new(800, 600);
+$graph2->set(
+      x_label           => 'Date-Time',
+      y_label           => 'Temperature',
+      title             => 'Temperature, Dewpoint and Humidity',
+      transparent       => 0,
+      bgclr             => 'white',
+      y_max_value       => 120,
+      y_tick_number     => 8,
+      show_values       => 1,
+      x_labels_vertical => 1,
+      line_types        => [ 1, 1, 2 ],
+      markers           => [ 1, 5, 7 ],
+      long_ticks        => 1,
+      legend_placement  => 'RC',
+   legend_marker_width  => 12,
+   legend_marker_height => 12
+      #y_label_skip      => 2
+  ) or die $graph->error;
+$graph2->set_legend('Temp', 'Dewpoint' , 'Humidity');
+
+
+my $gd2 = $graph2->plot(\@data2) or die $graph2->error;
+open IMG, ">", "3hrtmpdp.png" or die;
+binmode IMG;
+print IMG $gd2->png;
+close;
 
 
 __END__
