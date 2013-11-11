@@ -8,7 +8,6 @@ use Getopt::Std;
 use GD;
 use GD::Graph::linespoints;
 use GD::Text;
-use CGI;
 
 our ($opt_d);
 getopts('d');
@@ -20,8 +19,8 @@ if ($opt_d) { $debug = 1 };
 
 #print Dumper @rawtime;
 $start_t = scalar localtime(time);
-#$end_t = scalar localtime(time + 604800);   #7 days later
-$end_t = scalar localtime(time + 432000);   #5 days later
+$end_t = scalar localtime(time + 604800);   #7 days later
+#$end_t = scalar localtime(time + 432000);   #5 days later
 #$end_t = scalar localtime(time + 259200);   #3 days later
 if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
@@ -67,6 +66,8 @@ my $dp      = $params->[3]->{value};                         #3Hourly Dewpoint
 my $dp_time = $params->[3]->{'time-layout'};
 my $hd = $forcast->{data}[0]->{parameters}[0]->{humidity}[0]->{value};          #3Hour Humidity
 my $hd_time = $forcast->{data}[0]->{parameters}[0]->{humidity}[0]->{'time-layout'};
+my $cldamt = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{value};
+my $cldamt_time = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{'time-layout'};
 my $time = $forcast->{data}[0]->{'time-layout'};                                #Time Layout hash base
 my $svt;
 if ($debug) {
@@ -95,7 +96,7 @@ if ($debug) {
     say "Time Info";
     print Dumper %timeinfo;
 }
-my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @hrlytmp_time);
+my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @hrlytmp_time, @cldamt);
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
@@ -103,7 +104,6 @@ say "Next $s Day Highs";
 for ($c = 0; $c <= (@{$ht} - 1); $c++) {
     print "@{$timeinfo{$ht_time}}[$c] ";
     say
-
     "$ht->[$c]F  ";
     push(@hitemp, $ht->[$c]);
     push(@hitemp_time, @{$timeinfo{$ht_time}}[$c]);
@@ -156,6 +156,20 @@ for ($c = 0; $c <= (@{$hd} - 1); $c++) {
     push(@hrlyhd, $hd->[$c]);
 }
 print "\n";
+$k =  0;
+say "% cloud coverage";
+for ($c = 0; $c <= (@{$hd} - 1); $c++) {
+    print "@{$timeinfo{$cldamt_time}}[$c] ";
+    $k++;
+    print "$cldamt->[$c]%  ";
+    if ($k == 4) {
+        print "\n";
+        $k = 0;
+    }
+    push(@cldamt, $cldamt->[$c]);
+}
+say "";
+
 #forcast();
 
 
@@ -174,7 +188,6 @@ print "\n";
 }
 #my $gd_text = GD::Text->new() or die;
 #$gd_text->set_font(gdMediumBoldFont, 18);
-my $q = new CGI;
 
 my $font_dir = '/usr/local/share/fonts';
 my $font_file = "$font_dir/freeSans.ttf";
@@ -222,13 +235,14 @@ my @data2 = (
     [@hrlytmp],
     [@hrlydp],
     [@hrlyhd],
+    [@cldamt],
 );
 if ($debug) { print Dumper @data2; }
-my $graph2 = GD::Graph::linespoints->new(800, 600);
+my $graph2 = GD::Graph::linespoints->new(1000, 600);
 $graph2->set(
       x_label           => 'Date-Time',
       y_label           => 'Temperature',
-      title             => 'Temperature, Dewpoint and Humidity',
+      title             => 'Temperature, Dewpoint, Cloudcover and Humidity',
       transparent       => 0,
       bgclr             => 'white',
       y_max_value       => 120,
@@ -236,14 +250,15 @@ $graph2->set(
       show_values       => 1,
       x_labels_vertical => 1,
       line_types        => [ 1, 1, 2 ],
-      markers           => [ 1, 5, 7 ],
+      markers           => [ 1, 5, 7, 1 ],
+      dclrs             => [ qw( red green blue cyan) ],
       long_ticks        => 1,
       legend_placement  => 'RC',
    legend_marker_width  => 12,
    legend_marker_height => 12
       #y_label_skip      => 2
   ) or die $graph->error;
-$graph2->set_legend('Temp', 'Dewpoint' , 'Humidity');
+$graph2->set_legend('Temp', 'Dewpoint' , 'Humidity' , ' % Cloudcover');
 
 
 my $gd2 = $graph2->plot(\@data2) or die $graph2->error;
