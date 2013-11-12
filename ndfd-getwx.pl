@@ -13,7 +13,7 @@ our ($opt_d);
 getopts('d');
 
 
-#$Data::Dumper::Indent = 3;
+$Data::Dumper::Indent = 3;
 my ($start_t, $end_t, $debug, $c, $d, $timekey);
 if ($opt_d) { $debug = 1 };
 
@@ -56,20 +56,21 @@ if ($debug) { print Dumper $forcast };
 #my $s = @{$forcast->{data}[0]->{parameters}[0]->{temperature}[2]->{value}};
 my $params = $forcast->{data}[0]->{parameters}[0]->{temperature};
 
-my $ht      = $params->[0]->{value};                         #Max Daily Temp
-my $ht_time = $params->[0]->{'time-layout'};
-my $lt      = $params->[1]->{value};                         #Min Daily Temp
-my $lt_time = $params->[1]->{'time-layout'};
-my $hrtmp   = $params->[2]->{value};                      #3Hour Temperature
-my $hrtmp_time = $params->[2]->{'time-layout'};
-my $dp      = $params->[3]->{value};                         #3Hourly Dewpoint
-my $dp_time = $params->[3]->{'time-layout'};
-my $hd = $forcast->{data}[0]->{parameters}[0]->{humidity}[0]->{value};          #3Hour Humidity
-my $hd_time = $forcast->{data}[0]->{parameters}[0]->{humidity}[0]->{'time-layout'};
-my $cldamt = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{value};
+my $ht          = $params->[0]->{value};                            #Max Daily Temp
+my $ht_time     = $params->[0]->{'time-layout'};
+my $lt          = $params->[1]->{value};                           #Min Daily Temp
+my $lt_time     = $params->[1]->{'time-layout'};
+my $hrtmp       = $params->[2]->{value};                      #3Hour Temperature
+my $hrtmp_time  = $params->[2]->{'time-layout'};
+my $dp          = $params->[3]->{value};                         #3Hourly Dewpoint
+my $dp_time     = $params->[3]->{'time-layout'};
+my $hd          = $forcast->{data}[0]->{parameters}[0]->{humidity}[0]->{value};          #3Hour Humidity
+my $hd_time     = $forcast->{data}[0]->{parameters}[0]->{humidity}[0]->{'time-layout'};
+my $cldamt      = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{value};
 my $cldamt_time = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{'time-layout'};
-my $time = $forcast->{data}[0]->{'time-layout'};                                #Time Layout hash base
-my $svt;
+my $time        = $forcast->{data}[0]->{'time-layout'};                                #Time Layout hash base
+my $svt;        #$svt is Start Valid Time
+
 if ($debug) {
     say "Hi temp time layout $ht_time";
     say "Low temp time layout $lt_time";
@@ -89,32 +90,39 @@ for ($c = 0; $c <= @{$time} - 1; $c++) {
         my $t = $svt->[$d];
         $t =~ /\d{4}-(\d{2}-\d{2})T(\d{2}:\d{2}):00-\d{2}:00/;
         $t = $1 . " " . $2;
-        push (@{$timeinfo{$timekey}}, $t);
+        push (@{$timeinfo{$timekey}}, $t);            #list of Time Codes with times
     }
 }
 if ($debug) {
     say "Time Info";
     print Dumper %timeinfo;
 }
-my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @hrlytmp_time, @cldamt);
+my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @lotemp_time, @hrlytmp_time, @cldamt);
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
 say "Next $s Day Highs";
 for ($c = 0; $c <= (@{$ht} - 1); $c++) {
     print "@{$timeinfo{$ht_time}}[$c] ";
-    say
-    "$ht->[$c]F  ";
+    say "$ht->[$c]F  ";
     push(@hitemp, $ht->[$c]);
     push(@hitemp_time, @{$timeinfo{$ht_time}}[$c]);
 }
 print "\n";
-my $l = @{$lt};
+my $l = @{$lt};   #number of days
 print "Next $l day Lows \n";
 for ($c = 0; $c <= (@{$lt} - 1); $c++) {
     print "@{$timeinfo{$lt_time}}[$c] ";
     say "$lt->[$c]F ";
     push (@lowtemp, $lt->[$c]);
+    push (@lotemp_time, @{$timeinfo{$lt_time}}[$c]);
+}
+if ($lotemp_time[0] lt $hitemp_time[0]) {
+        shift(@lowtemp);
+        push(@lowtemp, undef);
+} elsif ($lotemp_time[0] gt $hitemp_time[0]) {
+        shift(@hitemp);
+        push(@hitemp, undef);
 }
 print "\n";
 print "3 Hourly Temperature\n";
@@ -158,7 +166,7 @@ for ($c = 0; $c <= (@{$hd} - 1); $c++) {
 print "\n";
 $k =  0;
 say "% cloud coverage";
-for ($c = 0; $c <= (@{$hd} - 1); $c++) {
+for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
     print "@{$timeinfo{$cldamt_time}}[$c] ";
     $k++;
     print "$cldamt->[$c]%  ";
@@ -175,17 +183,7 @@ say "";
 
 #print Dumper @products;
 #print Dumper @weather_params;
-sub forcast {
-my ($ele, $timeinfo, $hitemp) = @_;
-my $c;
-say "Next $s Day Highs";
-    for ($c = 0; $c <= (@{$ht} - 1); $c++) {
-        say (@{$timeinfo{$ht_time}}[$c]);
-        say "$ht->[$c] ";
 
-    }
-print "\n";
-}
 #my $gd_text = GD::Text->new() or die;
 #$gd_text->set_font(gdMediumBoldFont, 18);
 
@@ -196,7 +194,6 @@ my @data = (
     [@hitemp_time],
     [@hitemp],
     [@lowtemp],
-    #[ sort { $a <=> $b } (1, 2, 5, 6, 3, 1.5, 1, 3, 4) ]
   );
 if ($debug) { print Dumper @data; }
 my $graph = GD::Graph::linespoints->new(640, 480);
