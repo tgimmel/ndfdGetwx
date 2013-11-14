@@ -26,7 +26,8 @@ if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
 
 my $ndfdgen = Weather::NWS::NDFDgen->new();
-my ($latitude, $longitude) = ('37.8399', '-87.582');
+my ($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
+#my ($latitude, $longitude) = ('37.5467', '-87.9839'); #Stugis, KY
 #my @products = $ndfdgen->get_available_products();
 #my @weather_params = $ndfdgen->get_available_weather_parameters();
 
@@ -69,6 +70,7 @@ my $hd_time     = $forcast->{data}[0]->{parameters}[0]->{humidity}[0]->{'time-la
 my $cldamt      = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{value};
 my $cldamt_time = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{'time-layout'};
 my $time        = $forcast->{data}[0]->{'time-layout'};                                #Time Layout hash base
+my $moreInfo    = $forcast->{data}[0]->{moreWeatherInformation}[0]->{content};
 my $svt;        #$svt is Start Valid Time
 
 if ($debug) {
@@ -97,7 +99,7 @@ if ($debug) {
     say "Time Info";
     print Dumper %timeinfo;
 }
-my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @lotemp_time, @hrlytmp_time, @cldamt);
+my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @lotemp_time, @hrlytmp_time, @cldamt, @hilowtempHeader);
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
@@ -117,13 +119,13 @@ for ($c = 0; $c <= (@{$lt} - 1); $c++) {
     push (@lowtemp, $lt->[$c]);
     push (@lotemp_time, @{$timeinfo{$lt_time}}[$c]);
 }
-if ($lotemp_time[0] lt $hitemp_time[0]) {
-        shift(@lowtemp);
-        push(@lowtemp, undef);
-} elsif ($lotemp_time[0] gt $hitemp_time[0]) {
-        shift(@hitemp);
-        push(@hitemp, undef);
-}
+@hilowtempHeader = @hitemp_time;    #Default use Hitemp time/date/temp
+if (substr($lowtemp[0], 0, 4) lt substr($hitemp[0], 0, 4)) {     #HiTemp for the day has passed, so the
+        unshift(@hitemp, undef);                                 #First HiTemp is tomorrow, We unshift him away.
+        #push(@hitemp, undef);
+        @hilowtempHeader = @lotemp_time;                       #Since the default Header is High Temp it will
+        #print Dumper @hitemp;                                  #start with tomorrow, but todays low is forcast at
+}                                                              #at 19:00, so use Low Temps Date/Times
 print "\n";
 print "3 Hourly Temperature\n";
 for ($c = 0; $c <= (@{$hrtmp} - 1); $c++) {
@@ -177,7 +179,7 @@ for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
     push(@cldamt, $cldamt->[$c]);
 }
 say "";
-
+say "More Weather information at: $moreInfo\.";
 #forcast();
 
 
@@ -188,10 +190,10 @@ say "";
 #$gd_text->set_font(gdMediumBoldFont, 18);
 
 my $font_dir = '/usr/local/share/fonts';
-my $font_file = "$font_dir/freeSans.ttf";
+my $font_file = '/Library/Fonts/Courier New Bold.ttf';
 
 my @data = (
-    [@hitemp_time],
+    [@hilowtempHeader],
     [@hitemp],
     [@lowtemp],
   );
@@ -200,7 +202,7 @@ my $graph = GD::Graph::linespoints->new(640, 480);
 $graph->set(
       x_label           => 'Date-Time',
       y_label           => 'Temperature',
-      title             => 'High and Low Temperatures',
+      title             => "High and Low Temperatures for Lat: $latitude, Long: $longitude",
       y_max_value       => 100,
       transparent       => 0,
       y_tick_number     => 8,
@@ -213,6 +215,11 @@ $graph->set(
       markers           => [ 1, 5 ],
       #y_label_skip      => 2
   ) or die $graph->error;
+my $qs = $graph->can_do_ttf();
+print $qs;
+print Dumper $qs;
+
+
 $graph->set_legend( 'High Temp', 'Low Temp');
 $graph->set_title_font($font_file, 20);
 $graph->set_x_label_font($font_file, 16);
@@ -239,7 +246,7 @@ my $graph2 = GD::Graph::linespoints->new(1000, 600);
 $graph2->set(
       x_label           => 'Date-Time',
       y_label           => 'Temperature',
-      title             => 'Temperature, Dewpoint, Cloudcover and Humidity',
+      title             => "Temperature, Dewpoint, Cloudcover and Humidity for Lat: $latitude, Long: $longitude",
       transparent       => 0,
       bgclr             => 'white',
       y_max_value       => 120,
