@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/perl -w
 use strict;
 use Weather::NWS::NDFDgen;
 use Data::Dumper;
@@ -8,6 +8,7 @@ use Getopt::Std;
 use GD;
 use GD::Graph::linespoints;
 use GD::Text;
+use CGI qw(:standard);
 
 our ($opt_d);
 getopts('d');
@@ -189,8 +190,8 @@ say "More Weather information at: $moreInfo\.";
 #my $gd_text = GD::Text->new() or die;
 #$gd_text->set_font(gdMediumBoldFont, 18);
 
-my $font_dir = '/usr/local/share/fonts';
-my $font_file = '/Library/Fonts/Courier New Bold.ttf';
+my $font_dir = '/usr/share/fonts';
+my $font_file = "$font_dir/truetype/freefont/FreeSans.ttf";
 
 my @data = (
     [@hilowtempHeader],
@@ -215,17 +216,15 @@ $graph->set(
       markers           => [ 1, 5 ],
       #y_label_skip      => 2
   ) or die $graph->error;
-my $qs = $graph->can_do_ttf();
-print $qs;
-print Dumper $qs;
-
+my $cando_ttf = $graph->can_do_ttf();
+if (!$cando_ttf) { print "WARNING: Cannot render trueType fonts!\n"; }
 
 $graph->set_legend( 'High Temp', 'Low Temp');
-$graph->set_title_font($font_file, 20);
-$graph->set_x_label_font($font_file, 16);
-$graph->set_y_label_font($font_file, 16);
-$graph->set_x_axis_font($font_file, 11);
-$graph->set_y_axis_font($font_file, 11);
+$graph->set_title_font($font_file, 14);
+$graph->set_x_label_font($font_file, 10);
+$graph->set_y_label_font($font_file, 12);
+$graph->set_x_axis_font($font_file, 8);
+$graph->set_y_axis_font($font_file, 10);
 $graph->set_legend_font($font_file, 9);
 my $gd = $graph->plot(\@data) or die $graph->error;
 open(IMG, '>HighTemp.png') or die $!;
@@ -233,6 +232,10 @@ open(IMG, '>HighTemp.png') or die $!;
   print IMG $gd->png;
   close IMG;
 
+#my $format = $graph->export_format;
+#print header("image/$format");
+#binmode STDOUT;
+#print $graph->plot(\@data)->$format();
 
 my @data2 = (
     [@hrlytmp_time],
@@ -264,6 +267,12 @@ $graph2->set(
   ) or die $graph->error;
 $graph2->set_legend('Temp', 'Dewpoint' , 'Humidity' , ' % Cloudcover');
 
+$graph2->set_title_font($font_file, 12);
+$graph2->set_x_label_font($font_file, 10);
+$graph2->set_y_label_font($font_file, 12);
+$graph2->set_x_axis_font($font_file, 8);
+$graph2->set_y_axis_font($font_file, 10);
+$graph2->set_legend_font($font_file, 9);
 
 my $gd2 = $graph2->plot(\@data2) or die $graph2->error;
 open IMG, ">", "3hrtmpdp.png" or die;
