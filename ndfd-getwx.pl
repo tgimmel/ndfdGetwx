@@ -18,6 +18,12 @@ $Data::Dumper::Indent = 3;
 my ($start_t, $end_t, $debug, $c, $d, $timekey);
 if ($opt_d) { $debug = 1 };
 
+my $q = CGI->new();
+print $q->header(-title => 'Weather Temps');
+print $q->start_html(-title => 'Weather Tempertures',
+                   -BGCOLOR => 'grey',      
+);
+print "\n";
 #print Dumper @rawtime;
 $start_t = scalar localtime(time);
 $end_t = scalar localtime(time + 604800);   #7 days later
@@ -104,19 +110,19 @@ my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @lotemp_time, @
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
-say "Next $s Day Highs";
+#print "Next $s Day Highs\n";
 for ($c = 0; $c <= (@{$ht} - 1); $c++) {
-    print "@{$timeinfo{$ht_time}}[$c] ";
-    say "$ht->[$c]F  ";
+#    print "@{$timeinfo{$ht_time}}[$c] ";
+#    say "$ht->[$c]F  ";
     push(@hitemp, $ht->[$c]);
     push(@hitemp_time, @{$timeinfo{$ht_time}}[$c]);
 }
-print "\n";
+#print "\n";
 my $l = @{$lt};   #number of days
-print "Next $l day Lows \n";
+#print "Next $l day Lows \n";
 for ($c = 0; $c <= (@{$lt} - 1); $c++) {
-    print "@{$timeinfo{$lt_time}}[$c] ";
-    say "$lt->[$c]F ";
+#    print "@{$timeinfo{$lt_time}}[$c] ";
+#    say "$lt->[$c]F ";
     push (@lowtemp, $lt->[$c]);
     push (@lotemp_time, @{$timeinfo{$lt_time}}[$c]);
 }
@@ -127,68 +133,60 @@ if (substr($lowtemp[0], 0, 4) lt substr($hitemp[0], 0, 4)) {     #HiTemp for the
         @hilowtempHeader = @lotemp_time;                       #Since the default Header is High Temp it will
         #print Dumper @hitemp;                                  #start with tomorrow, but todays low is forcast at
 }                                                              #at 19:00, so use Low Temps Date/Times
-print "\n";
-print "3 Hourly Temperature\n";
+#print "\n";
+#print "3 Hourly Temperature\n";
 for ($c = 0; $c <= (@{$hrtmp} - 1); $c++) {
-    print "@{$timeinfo{$hrtmp_time}}[$c] ";
+#    print "@{$timeinfo{$hrtmp_time}}[$c] ";
     $k++;
-    print "$hrtmp->[$c] F  ";
+#    print "$hrtmp->[$c] F  ";
     if ($k == 4) {
-        print "\n";
+#        print "\n";
         $k = 0;
     }
     push(@hrlytmp, $hrtmp->[$c]);
     push(@hrlytmp_time, @{$timeinfo{$hrtmp_time}}[$c]);
 }
-print "\n";
-print "3 Hourly Dewpoint\n";
+#print "\n";
+#print "3 Hourly Dewpoint\n";
 $k = 0;
 for ($c = 0; $c <= (@{$dp} - 1); $c++) {
-    print "@{$timeinfo{$dp_time}}[$c] ";
+#    print "@{$timeinfo{$dp_time}}[$c] ";
     $k++;
-    print "$dp->[$c] F  ";
+#    print "$dp->[$c] F  ";
     if ($k == 4) {
-        print "\n";
+#        print "\n";
         $k = 0;
     }
     push(@hrlydp, $dp->[$c]);
 }
-print "\n";
-print "3 Hourly Humidity\n";
+#print "\n";
+#print "3 Hourly Humidity\n";
 $k = 0;
 for ($c = 0; $c <= (@{$hd} - 1); $c++) {
-    print "@{$timeinfo{$hd_time}}[$c] ";
+ #   print "@{$timeinfo{$hd_time}}[$c] ";
     $k++;
-    print "$hd->[$c] F  ";
+#    print "$hd->[$c] F  ";
     if ($k == 4) {
-        print "\n";
+#        print "\n";
         $k = 0;
     }
     push(@hrlyhd, $hd->[$c]);
 }
-print "\n";
+#print "\n";
 $k =  0;
-say "% cloud coverage";
+#say "% cloud coverage";
 for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
-    print "@{$timeinfo{$cldamt_time}}[$c] ";
+#    print "@{$timeinfo{$cldamt_time}}[$c] ";
     $k++;
-    print "$cldamt->[$c]%  ";
+#    print "$cldamt->[$c]%  ";
     if ($k == 4) {
-        print "\n";
+#        print "\n";
         $k = 0;
     }
     push(@cldamt, $cldamt->[$c]);
 }
-say "";
-say "More Weather information at: $moreInfo\.";
-#forcast();
+#say "More Weather information at: $moreInfo\.";
 
-
-#print Dumper @products;
-#print Dumper @weather_params;
-
-#my $gd_text = GD::Text->new() or die;
-#$gd_text->set_font(gdMediumBoldFont, 18);
 
 my $font_dir = '/usr/share/fonts';
 my $font_file = "$font_dir/truetype/freefont/FreeSans.ttf";
@@ -227,15 +225,10 @@ $graph->set_x_axis_font($font_file, 8);
 $graph->set_y_axis_font($font_file, 10);
 $graph->set_legend_font($font_file, 9);
 my $gd = $graph->plot(\@data) or die $graph->error;
-open(IMG, '>HighTemp.png') or die $!;
+open(IMG, '>/home/tim/perl/ndfdGetwx/HighTemp.png') or die $!;
   binmode IMG;
   print IMG $gd->png;
   close IMG;
-
-#my $format = $graph->export_format;
-#print header("image/$format");
-#binmode STDOUT;
-#print $graph->plot(\@data)->$format();
 
 my @data2 = (
     [@hrlytmp_time],
@@ -275,11 +268,25 @@ $graph2->set_y_axis_font($font_file, 10);
 $graph2->set_legend_font($font_file, 9);
 
 my $gd2 = $graph2->plot(\@data2) or die $graph2->error;
-open IMG, ">", "3hrtmpdp.png" or die;
+open IMG, ">", "/home/tim/perl/ndfdGetwx/3hrtmpdp.png" or die;
 binmode IMG;
 print IMG $gd2->png;
-close;
+#close;
 
+
+print <<EOB;
+<br>
+<h2>Next 7 Day High and Low Tempertures</h2>
+<p><img src="http://banger.gimmel.org/cgi-bin/HighTemp.pl" "width="640" height="480" longdesc="HighTemp.png" />  </p>
+<h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover</h2>
+<p><img src="http://banger.gimmel.org/cgi-bin/3hrtmpdp.pl" "width="800" height="600" longdesc="3 hour temps" /> </p>
+<br>
+<a href="http://forecast.weather.gov/MapClick.php?textField1=37.85&textField2=-87.45">More Weather information for this location here.</a>
+<br>
+EOB
+
+
+print $q->end_html();
 
 __END__
 Products:
