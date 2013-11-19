@@ -21,19 +21,20 @@ if ($opt_d) { $debug = 1 };
 my $q = CGI->new();
 print $q->header(-title => 'Weather Temps');
 print $q->start_html(-title => 'Weather Tempertures',
-                   -BGCOLOR => 'grey',      
+                   -BGCOLOR => 'grey',
 );
 print "\n";
 #print Dumper @rawtime;
 $start_t = scalar localtime(time);
-$end_t = scalar localtime(time + 604800);   #7 days later
-#$end_t = scalar localtime(time + 432000);   #5 days later
+#$end_t = scalar localtime(time + 604800);   #7 days later
+$end_t = scalar localtime(time + 432000);   #5 days later
 #$end_t = scalar localtime(time + 259200);   #3 days later
 if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
 
 my $ndfdgen = Weather::NWS::NDFDgen->new();
-my ($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
+#my ($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
+my ($latitude, $longitude) = ('37.84', '-87.59');
 #my ($latitude, $longitude) = ('37.5467', '-87.9839'); #Stugis, KY
 #my @products = $ndfdgen->get_available_products();
 #my @weather_params = $ndfdgen->get_available_weather_parameters();
@@ -56,7 +57,7 @@ $ndfdgen->set_weather_parameters(
 
 
 my $xml = $ndfdgen->get_forecast_xml();
-#if ($debug) { print Dumper $xml};
+if ($debug) { print Dumper $xml};
 my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => []);
 
 my $forcast = $xs->XMLin($xml);
@@ -90,18 +91,19 @@ if ($debug) {
 my %timeinfo;
 
 for ($c = 0; $c <= @{$time} - 1; $c++) {
-#    say $time->[$c]->{'layout-key'}[0];              #This is the Time Key at @c
+    say $time->[$c]->{'layout-key'}[0] . "<br>";              #This is the Time Key at @c
     $timekey = $time->[$c]->{'layout-key'}[0];
     $svt = $time->[$c]->{'start-valid-time'};        #iterate over times
     $timeinfo{$timekey} = [] unless $timeinfo{$timekey};
     for ($d = 0; $d <= @{$svt} - 1; $d++) {
-#        say $svt->[$d];                              #each of the time codes
+        say $svt->[$d] . "<br>";                              #each of the time codes
         my $t = $svt->[$d];
         $t =~ /\d{4}-(\d{2}-\d{2})T(\d{2}:\d{2}):00-\d{2}:00/;
         $t = $1 . " " . $2;
         push (@{$timeinfo{$timekey}}, $t);            #list of Time Codes with times
     }
 }
+say "<br>";
 if ($debug) {
     say "Time Info";
     print Dumper %timeinfo;
@@ -110,22 +112,25 @@ my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @lotemp_time, @
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
-#print "Next $s Day Highs\n";
+print "Next $s Day Highs <br>\n";
 for ($c = 0; $c <= (@{$ht} - 1); $c++) {
-#    print "@{$timeinfo{$ht_time}}[$c] ";
-#    say "$ht->[$c]F  ";
+    print "@{$timeinfo{$ht_time}}[$c] ";
+    say "$ht->[$c]F  <br>";
     push(@hitemp, $ht->[$c]);
     push(@hitemp_time, @{$timeinfo{$ht_time}}[$c]);
 }
-#print "\n";
-my $l = @{$lt};   #number of days
-#print "Next $l day Lows \n";
-for ($c = 0; $c <= (@{$lt} - 1); $c++) {
-#    print "@{$timeinfo{$lt_time}}[$c] ";
-#    say "$lt->[$c]F ";
-    push (@lowtemp, $lt->[$c]);
-    push (@lotemp_time, @{$timeinfo{$lt_time}}[$c]);
-}
+print "<br>\n";
+
+
+    my $l = @{$lt};   #number of days
+    print "Next $l day Lows <br>\n";
+    for ($c = 0; $c <= (@{$lt} - 1); $c++) {
+        print "@{$timeinfo{$lt_time}}[$c] ";
+        say "$lt->[$c]F <br>";
+        push (@lowtemp, $lt->[$c]);
+        push (@lotemp_time, @{$timeinfo{$lt_time}}[$c]);
+    }
+say "<br>";
 @hilowtempHeader = @hitemp_time;    #Default use Hitemp time/date/temp
 if (substr($lowtemp[0], 0, 4) lt substr($hitemp[0], 0, 4)) {     #HiTemp for the day has passed, so the
         unshift(@hitemp, undef);                                 #First HiTemp is tomorrow, We unshift him away.
@@ -133,58 +138,71 @@ if (substr($lowtemp[0], 0, 4) lt substr($hitemp[0], 0, 4)) {     #HiTemp for the
         @hilowtempHeader = @lotemp_time;                       #Since the default Header is High Temp it will
         #print Dumper @hitemp;                                  #start with tomorrow, but todays low is forcast at
 }                                                              #at 19:00, so use Low Temps Date/Times
-#print "\n";
-#print "3 Hourly Temperature\n";
+print "\n";
+print "3 Hourly Temperature <br>\n";
 for ($c = 0; $c <= (@{$hrtmp} - 1); $c++) {
-#    print "@{$timeinfo{$hrtmp_time}}[$c] ";
+    print "@{$timeinfo{$hrtmp_time}}[$c] ";
     $k++;
-#    print "$hrtmp->[$c] F  ";
+    print "$hrtmp->[$c] F  ";
     if ($k == 4) {
-#        print "\n";
+        print "<br>\n";
         $k = 0;
     }
     push(@hrlytmp, $hrtmp->[$c]);
     push(@hrlytmp_time, @{$timeinfo{$hrtmp_time}}[$c]);
 }
-#print "\n";
-#print "3 Hourly Dewpoint\n";
-$k = 0;
-for ($c = 0; $c <= (@{$dp} - 1); $c++) {
-#    print "@{$timeinfo{$dp_time}}[$c] ";
-    $k++;
-#    print "$dp->[$c] F  ";
-    if ($k == 4) {
-#        print "\n";
-        $k = 0;
-    }
-    push(@hrlydp, $dp->[$c]);
+if ($debug) {
+   say "3 Hourly temp codes";
+   print Dumper @hrlytmp_time;
+   say "3 Hourly temps";
+   print Dumper @hrlytmp;
 }
-#print "\n";
-#print "3 Hourly Humidity\n";
+print "\n";
+print "3 Hourly Dewpoint <br>\n";
 $k = 0;
-for ($c = 0; $c <= (@{$hd} - 1); $c++) {
- #   print "@{$timeinfo{$hd_time}}[$c] ";
-    $k++;
-#    print "$hd->[$c] F  ";
-    if ($k == 4) {
-#        print "\n";
-        $k = 0;
+
+
+    for ($c = 0; $c <= (@{$dp} - 1); $c++) {
+        print "@{$timeinfo{$dp_time}}[$c] ";
+        $k++;
+        print "$dp->[$c] F  ";
+        if ($k == 4) {
+            print " <br>\n";
+            $k = 0;
+        }
+        push(@hrlydp, $dp->[$c]);
     }
-    push(@hrlyhd, $hd->[$c]);
-}
-#print "\n";
+
+print "\n";
+print "3 Hourly Humidity <br>\n";
+$k = 0;
+
+    for ($c = 0; $c <= (@{$hd} - 1); $c++) {
+        print "@{$timeinfo{$hd_time}}[$c] ";
+        $k++;
+        print "$hd->[$c] F  ";
+        if ($k == 4) {
+            print "<br>\n";
+            $k = 0;
+        }
+        push(@hrlyhd, $hd->[$c]);
+    }
+
+print "\n";
 $k =  0;
-#say "% cloud coverage";
-for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
-#    print "@{$timeinfo{$cldamt_time}}[$c] ";
-    $k++;
-#    print "$cldamt->[$c]%  ";
-    if ($k == 4) {
-#        print "\n";
-        $k = 0;
+say "% cloud coverage <br>";
+
+    for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
+        print "@{$timeinfo{$cldamt_time}}[$c] ";
+        $k++;
+        print "$cldamt->[$c]%  ";
+        if ($k == 4) {
+            print "<br>\n";
+            $k = 0;
+        }
+        push(@cldamt, $cldamt->[$c]);
     }
-    push(@cldamt, $cldamt->[$c]);
-}
+
 #say "More Weather information at: $moreInfo\.";
 
 
@@ -215,7 +233,7 @@ $graph->set(
       #y_label_skip      => 2
   ) or die $graph->error;
 my $cando_ttf = $graph->can_do_ttf();
-if (!$cando_ttf) { print "WARNING: Cannot render trueType fonts!\n"; }
+if (!$cando_ttf) { print "<h2>WARNING: Cannot render trueType fonts!</h2><br>\n"; }
 
 $graph->set_legend( 'High Temp', 'Low Temp');
 $graph->set_title_font($font_file, 14);
