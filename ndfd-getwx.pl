@@ -26,16 +26,18 @@ print $q->start_html(-title => 'Weather Tempertures',
 print "\n";
 #print Dumper @rawtime;
 $start_t = scalar localtime(time);
-#$end_t = scalar localtime(time + 604800);   #7 days later
-$end_t = scalar localtime(time + 432000);   #5 days later
+#$end_t = scalar localtime(time + 604800);    #7 days later
+$end_t = scalar localtime(time + 518400);    #6 days later
+#$end_t = scalar localtime(time + 432000);   #5 days later
 #$end_t = scalar localtime(time + 259200);   #3 days later
 if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
 
 my $ndfdgen = Weather::NWS::NDFDgen->new();
-#my ($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
-my ($latitude, $longitude) = ('37.84', '-87.59');
-#my ($latitude, $longitude) = ('37.5467', '-87.9839'); #Stugis, KY
+my ($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
+#my ($latitude, $longitude) = ('37.84', '-87.59');
+#my ($latitude, $longitude) = ('37.5467', '-87.9839');  #Stugis, KY
+#my ($latitude, $longitude) = ('35.85', '-97.42');     #Arcadia, OK
 #my @products = $ndfdgen->get_available_products();
 #my @weather_params = $ndfdgen->get_available_weather_parameters();
 
@@ -93,14 +95,14 @@ my %timeinfo;
 for ($c = 0; $c <= @{$time} - 1; $c++) {
     say $time->[$c]->{'layout-key'}[0] . "<br>";              #This is the Time Key at @c
     $timekey = $time->[$c]->{'layout-key'}[0];
-    $svt = $time->[$c]->{'start-valid-time'};        #iterate over times
+    $svt = $time->[$c]->{'start-valid-time'};                 #iterate over times
     $timeinfo{$timekey} = [] unless $timeinfo{$timekey};
     for ($d = 0; $d <= @{$svt} - 1; $d++) {
         say $svt->[$d] . "<br>";                              #each of the time codes
         my $t = $svt->[$d];
         $t =~ /\d{4}-(\d{2}-\d{2})T(\d{2}:\d{2}):00-\d{2}:00/;
         $t = $1 . " " . $2;
-        push (@{$timeinfo{$timekey}}, $t);            #list of Time Codes with times
+        push (@{$timeinfo{$timekey}}, $t);                    #list of Time Codes with times
     }
 }
 say "<br>";
@@ -132,12 +134,23 @@ print "<br>\n";
     }
 say "<br>";
 @hilowtempHeader = @hitemp_time;    #Default use Hitemp time/date/temp
-if (substr($lowtemp[0], 0, 4) lt substr($hitemp[0], 0, 4)) {     #HiTemp for the day has passed, so the
-        unshift(@hitemp, undef);                                 #First HiTemp is tomorrow, We unshift him away.
+#if (substr($lowtemp[0], 0, 4) gt substr($hitemp[0], 0, 4)) {     #HiTemp for the day has passed, so the
+#        unshift(@hitemp, undef);                                 #First HiTemp is tomorrow, We unshift him away.
         #push(@hitemp, undef);
-        @hilowtempHeader = @lotemp_time;                       #Since the default Header is High Temp it will
+#        @hilowtempHeader = @lotemp_time;                       #Since the default Header is High Temp it will
         #print Dumper @hitemp;                                  #start with tomorrow, but todays low is forcast at
-}                                                              #at 19:00, so use Low Temps Date/Times
+#}                                                              #at 19:00, so use Low Temps Date/Times
+my ($p,$q);
+$p = @hitemp_time;
+$q = @lotemp_time;
+print "p is $p and q is $q\n";
+if ($p < $q) {
+    unshift(@hitemp, undef);
+    @hilowtempHeader = @lotemp_time;
+} elsif ($p > $q) {
+    unshift(@lowtemp, undef);
+}    
+
 print "\n";
 print "3 Hourly Temperature <br>\n";
 for ($c = 0; $c <= (@{$hrtmp} - 1); $c++) {
@@ -295,9 +308,9 @@ print IMG $gd2->png;
 print <<EOB;
 <br>
 <h2>Next 7 Day High and Low Tempertures</h2>
-<p><img src="http://banger.gimmel.org/cgi-bin/HighTemp.pl" "width="640" height="480" longdesc="HighTemp.png" />  </p>
+<p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" "width="640" height="480" longdesc="HighTemp.png" />  </p>
 <h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover</h2>
-<p><img src="http://banger.gimmel.org/cgi-bin/3hrtmpdp.pl" "width="800" height="600" longdesc="3 hour temps" /> </p>
+<p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" "width="800" height="600" longdesc="3 hour temps" /> </p>
 <br>
 <a href="http://forecast.weather.gov/MapClick.php?textField1=37.85&textField2=-87.45">More Weather information for this location here.</a>
 <br>
