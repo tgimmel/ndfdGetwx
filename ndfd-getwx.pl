@@ -3,9 +3,9 @@ use strict;
 use Weather::NWS::NDFDgen;
 use Data::Dumper;
 use XML::Simple qw(:strict);
+use LWP::Simple;
 use feature qw/say/;
 use Getopt::Std;
-use GD;
 use GD::Graph::linespoints;
 use GD::Text;
 use CGI qw(:standard);
@@ -19,12 +19,30 @@ my ($start_t, $end_t, $debug, $c, $d, $timekey);
 if ($opt_d) { $debug = 1 };
 
 my $q = CGI->new();
-print $q->header(-title => 'Weather Temps');
+print $q->header(-title => 'Weather Temps',
+);
+
 print $q->start_html(-title => 'Weather Tempertures',
                    -BGCOLOR => 'grey',
 );
-print "\n";
-#print Dumper @rawtime;
+print $q->start_form();
+print "Enter your Zip Code:<br> ";
+print textfield(-name => 'inzip',
+             -default => '42420',
+                -size => 10,
+           -maxlength => 5,
+);  
+my $inzip = param('inzip');
+print "<br>";
+print submit(-name => 'submitZip',
+             -label => 'Get Weather',
+);
+print $q->end_form();
+unless ($inzip =~ /^[0-9]{5}$/) { say "Sorry Try again, Zip Code Error!"; }
+say "<br>inzip is $inzip" if $debug; 
+my @keywords = $q->keywords;
+print Dumper @keywords;
+
 $start_t = scalar localtime(time);
 #$end_t = scalar localtime(time + 604800);    #7 days later
 $end_t = scalar localtime(time + 518400);    #6 days later
@@ -33,8 +51,11 @@ $end_t = scalar localtime(time + 518400);    #6 days later
 if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
 
+my ($latitude, $longitude) = getLatLonfromZip($inzip);
+if ($debug) { say "Latitude: $latitude Longitude: $longitude"; }
+
 my $ndfdgen = Weather::NWS::NDFDgen->new();
-my ($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
+#($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
 #my ($latitude, $longitude) = ('37.84', '-87.59');
 #my ($latitude, $longitude) = ('37.5467', '-87.9839');  #Stugis, KY
 #my ($latitude, $longitude) = ('35.85', '-97.42');     #Arcadia, OK
@@ -93,16 +114,16 @@ if ($debug) {
 my %timeinfo;
 
 for ($c = 0; $c <= @{$time} - 1; $c++) {
-    say $time->[$c]->{'layout-key'}[0] . "<br>";              #This is the Time Key at @c
+    say $time->[$c]->{'layout-key'}[0] . "<br>" if ($debug);         #This is the Time Key at @c
     $timekey = $time->[$c]->{'layout-key'}[0];
-    $svt = $time->[$c]->{'start-valid-time'};                 #iterate over times
+    $svt = $time->[$c]->{'start-valid-time'};                        #iterate over times
     $timeinfo{$timekey} = [] unless $timeinfo{$timekey};
     for ($d = 0; $d <= @{$svt} - 1; $d++) {
-        say $svt->[$d] . "<br>";                              #each of the time codes
+        say $svt->[$d] . "<br>" if ($debug);                         #each of the time codes
         my $t = $svt->[$d];
         $t =~ /\d{4}-(\d{2}-\d{2})T(\d{2}:\d{2}):00-\d{2}:00/;
         $t = $1 . " " . $2;
-        push (@{$timeinfo{$timekey}}, $t);                    #list of Time Codes with times
+        push (@{$timeinfo{$timekey}}, $t);                           #list of Time Codes with times
     }
 }
 say "<br>";
@@ -114,51 +135,43 @@ my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @lotemp_time, @
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
-print "Next $s Day Highs <br>\n";
+print "Next $s Day Highs <br>\n" if ($debug);
 for ($c = 0; $c <= (@{$ht} - 1); $c++) {
-    print "@{$timeinfo{$ht_time}}[$c] ";
-    say "$ht->[$c]F  <br>";
+    print "@{$timeinfo{$ht_time}}[$c] " if $debug;
+    say "$ht->[$c]F  <br>" if $debug;
     push(@hitemp, $ht->[$c]);
     push(@hitemp_time, @{$timeinfo{$ht_time}}[$c]);
 }
-print "<br>\n";
-
 
     my $l = @{$lt};   #number of days
-    print "Next $l day Lows <br>\n";
+    print "Next $l day Lows <br>\n" if $debug;
     for ($c = 0; $c <= (@{$lt} - 1); $c++) {
-        print "@{$timeinfo{$lt_time}}[$c] ";
-        say "$lt->[$c]F <br>";
+        print "@{$timeinfo{$lt_time}}[$c] " if $debug;
+        say "$lt->[$c]F <br>" if $debug;
         push (@lowtemp, $lt->[$c]);
         push (@lotemp_time, @{$timeinfo{$lt_time}}[$c]);
     }
-say "<br>";
+#Here we work out header issues.  Somtimes there is not
+#the same amount of High and Low Temps depending on the time
+#of Day.
 @hilowtempHeader = @hitemp_time;    #Default use Hitemp time/date/temp
-#if (substr($lowtemp[0], 0, 4) gt substr($hitemp[0], 0, 4)) {     #HiTemp for the day has passed, so the
-#        unshift(@hitemp, undef);                                 #First HiTemp is tomorrow, We unshift him away.
-        #push(@hitemp, undef);
-#        @hilowtempHeader = @lotemp_time;                       #Since the default Header is High Temp it will
-        #print Dumper @hitemp;                                  #start with tomorrow, but todays low is forcast at
-#}                                                              #at 19:00, so use Low Temps Date/Times
-my ($p,$q);
+my ($p,$r);
 $p = @hitemp_time;
-$q = @lotemp_time;
-print "p is $p and q is $q\n";
-if ($p < $q) {
+$r = @lotemp_time;
+print "p is $p and r is $r\n" if $debug;
+if ($p < $r) {
     unshift(@hitemp, undef);
     @hilowtempHeader = @lotemp_time;
-} elsif ($p > $q) {
-    unshift(@lowtemp, undef);
-}    
+}
 
 print "\n";
-print "3 Hourly Temperature <br>\n";
+print "3 Hourly Temperature <br>\n" if $debug;
 for ($c = 0; $c <= (@{$hrtmp} - 1); $c++) {
-    print "@{$timeinfo{$hrtmp_time}}[$c] ";
+    print "@{$timeinfo{$hrtmp_time}}[$c] " if $debug;
     $k++;
-    print "$hrtmp->[$c] F  ";
+    print "$hrtmp->[$c] F  " if $debug;
     if ($k == 4) {
-        print "<br>\n";
+        print "<br>\n" if $debug;
         $k = 0;
     }
     push(@hrlytmp, $hrtmp->[$c]);
@@ -171,31 +184,31 @@ if ($debug) {
    print Dumper @hrlytmp;
 }
 print "\n";
-print "3 Hourly Dewpoint <br>\n";
+print "3 Hourly Dewpoint <br>\n" if $debug;
 $k = 0;
 
 
     for ($c = 0; $c <= (@{$dp} - 1); $c++) {
-        print "@{$timeinfo{$dp_time}}[$c] ";
+        print "@{$timeinfo{$dp_time}}[$c] " if $debug;
         $k++;
-        print "$dp->[$c] F  ";
+        print "$dp->[$c] F  " if $debug;
         if ($k == 4) {
-            print " <br>\n";
+            print " <br>\n" if $debug;
             $k = 0;
         }
         push(@hrlydp, $dp->[$c]);
     }
 
 print "\n";
-print "3 Hourly Humidity <br>\n";
+print "3 Hourly Humidity <br>\n" if $debug;
 $k = 0;
 
     for ($c = 0; $c <= (@{$hd} - 1); $c++) {
-        print "@{$timeinfo{$hd_time}}[$c] ";
+        print "@{$timeinfo{$hd_time}}[$c] " if $debug;
         $k++;
-        print "$hd->[$c] F  ";
+        print "$hd->[$c] F  " if $debug;
         if ($k == 4) {
-            print "<br>\n";
+            print "<br>\n" if $debug;
             $k = 0;
         }
         push(@hrlyhd, $hd->[$c]);
@@ -203,14 +216,14 @@ $k = 0;
 
 print "\n";
 $k =  0;
-say "% cloud coverage <br>";
+say "% cloud coverage <br>" if $debug;
 
     for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
-        print "@{$timeinfo{$cldamt_time}}[$c] ";
+        print "@{$timeinfo{$cldamt_time}}[$c] " if $debug;
         $k++;
-        print "$cldamt->[$c]%  ";
+        print "$cldamt->[$c]%  " if $debug;
         if ($k == 4) {
-            print "<br>\n";
+            print "<br>\n" if $debug;
             $k = 0;
         }
         push(@cldamt, $cldamt->[$c]);
@@ -312,13 +325,24 @@ print <<EOB;
 <h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover</h2>
 <p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" "width="800" height="600" longdesc="3 hour temps" /> </p>
 <br>
-<a href="http://forecast.weather.gov/MapClick.php?textField1=37.85&textField2=-87.45">More Weather information for this location here.</a>
-<br>
 EOB
 
+print "<a href=$moreInfo>More Weather information for this location here.</a><br>";
 
 print $q->end_html();
 
+
+sub getLatLonfromZip {
+    my $zipcode = shift;
+    my $url = 'http://graphical.weather.gov/xml/SOAP_server/ndfdXMLclient.php?whichClient=LatLonListZipCode&listZipCodeList=';
+    $url .= "$zipcode" . '&Unit=e&Submit=Submit';
+    my $xml = get($url);
+    my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => []);
+    my $latlon = $xs->XMLin($xml);
+    my $l = $latlon->{latLonList}[0];
+    my @latlon = split /,/,$l;
+    return @latlon;
+}
 __END__
 Products:
 $VAR1 = 'Glance';
