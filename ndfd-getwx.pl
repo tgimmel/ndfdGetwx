@@ -31,7 +31,7 @@ print textfield(-name => 'inzip',
              -default => '42420',
                 -size => 10,
            -maxlength => 5,
-);  
+);
 my $inzip = param('inzip');
 print "<br>";
 print submit(-name => 'submitZip',
@@ -39,15 +39,13 @@ print submit(-name => 'submitZip',
 );
 print $q->end_form();
 unless ($inzip =~ /^[0-9]{5}$/) { say "Sorry Try again, Zip Code Error!"; }
-say "<br>inzip is $inzip" if $debug; 
+say "<br>inzip is $inzip" if $debug;
 my @keywords = $q->keywords;
 print Dumper @keywords;
 
 $start_t = scalar localtime(time);
 #$end_t = scalar localtime(time + 604800);    #7 days later
-$end_t = scalar localtime(time + 518400);    #6 days later
-#$end_t = scalar localtime(time + 432000);   #5 days later
-#$end_t = scalar localtime(time + 259200);   #3 days later
+$end_t = scalar localtime(time + 518400);     #6 days later
 if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
 
@@ -56,11 +54,6 @@ if ($debug) { say "Latitude: $latitude Longitude: $longitude"; }
 
 my $ndfdgen = Weather::NWS::NDFDgen->new();
 #($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
-#my ($latitude, $longitude) = ('37.84', '-87.59');
-#my ($latitude, $longitude) = ('37.5467', '-87.9839');  #Stugis, KY
-#my ($latitude, $longitude) = ('35.85', '-97.42');     #Arcadia, OK
-#my @products = $ndfdgen->get_available_products();
-#my @weather_params = $ndfdgen->get_available_weather_parameters();
 
 $ndfdgen->set_latitude($latitude);
 $ndfdgen->set_longitude($longitude);
@@ -186,51 +179,40 @@ if ($debug) {
 print "\n";
 print "3 Hourly Dewpoint <br>\n" if $debug;
 $k = 0;
-
-
-    for ($c = 0; $c <= (@{$dp} - 1); $c++) {
-        print "@{$timeinfo{$dp_time}}[$c] " if $debug;
-        $k++;
-        print "$dp->[$c] F  " if $debug;
-        if ($k == 4) {
-            print " <br>\n" if $debug;
-            $k = 0;
-        }
-        push(@hrlydp, $dp->[$c]);
+for ($c = 0; $c <= (@{$dp} - 1); $c++) {
+    print "@{$timeinfo{$dp_time}}[$c] " if $debug;
+    $k++;
+    print "$dp->[$c] F  " if $debug;
+    if ($k == 4) {
+        print " <br>\n" if $debug;
+        $k = 0;
     }
-
-print "\n";
+    push(@hrlydp, $dp->[$c]);
+}
 print "3 Hourly Humidity <br>\n" if $debug;
 $k = 0;
-
-    for ($c = 0; $c <= (@{$hd} - 1); $c++) {
-        print "@{$timeinfo{$hd_time}}[$c] " if $debug;
-        $k++;
-        print "$hd->[$c] F  " if $debug;
-        if ($k == 4) {
-            print "<br>\n" if $debug;
-            $k = 0;
-        }
-        push(@hrlyhd, $hd->[$c]);
+for ($c = 0; $c <= (@{$hd} - 1); $c++) {
+    print "@{$timeinfo{$hd_time}}[$c] " if $debug;
+    $k++;
+    print "$hd->[$c] F  " if $debug;
+    if ($k == 4) {
+        print "<br>\n" if $debug;
+        $k = 0;
     }
-
-print "\n";
+    push(@hrlyhd, $hd->[$c]);
+}
 $k =  0;
 say "% cloud coverage <br>" if $debug;
-
-    for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
-        print "@{$timeinfo{$cldamt_time}}[$c] " if $debug;
-        $k++;
-        print "$cldamt->[$c]%  " if $debug;
-        if ($k == 4) {
-            print "<br>\n" if $debug;
-            $k = 0;
-        }
-        push(@cldamt, $cldamt->[$c]);
+for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
+    print "@{$timeinfo{$cldamt_time}}[$c] " if $debug;
+    $k++;
+    print "$cldamt->[$c]%  " if $debug;
+    if ($k == 4) {
+        print "<br>\n" if $debug;
+        $k = 0;
     }
-
-#say "More Weather information at: $moreInfo\.";
-
+    push(@cldamt, $cldamt->[$c]);
+}
 
 my $font_dir = '/usr/share/fonts';
 my $font_file = "$font_dir/truetype/freefont/FreeSans.ttf";
