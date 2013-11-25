@@ -9,3 +9,7 @@ http://graphical.weather.gov/xml/SOAP_server/ndfdXMLclient.php?whichClient=LatLo
 
 This one works!
 http://graphical.weather.gov/xml/SOAP_server/ndfdXMLclient.php?whichClient=LatLonListZipCode&listZipCodeList=95472&Unit=e&Submit=Submit
+
+Postal Service
+http://production.shippingapis.com/ShippingAPITest.dll?API=CityStateLookup&XML=<CityStateLookupRequest%20USERID="xxxxxxx"><ZipCode ID= "0"><Zip5>42420</Zip5></ZipCode></CityStateLookupRequest>
+

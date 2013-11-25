@@ -23,8 +23,10 @@ print $q->header(-title => 'Weather Temps',
 );
 
 print $q->start_html(-title => 'Weather Tempertures',
-                   -BGCOLOR => 'grey',
+                   -BGCOLOR => '#0F7FBA',
 );
+print "<div align=\"center\"><h1> Weather Temps Next 6 Days</h1></div>";
+print "<hr>";
 print $q->start_form();
 print "Enter your Zip Code:<br> ";
 print textfield(-name => 'inzip',
@@ -40,8 +42,6 @@ print submit(-name => 'submitZip',
 print $q->end_form();
 unless ($inzip =~ /^[0-9]{5}$/) { say "Sorry Try again, Zip Code Error!"; }
 say "<br>inzip is $inzip" if $debug;
-my @keywords = $q->keywords;
-print Dumper @keywords;
 
 $start_t = scalar localtime(time);
 #$end_t = scalar localtime(time + 604800);    #7 days later
@@ -302,14 +302,27 @@ print IMG $gd2->png;
 
 print <<EOB;
 <br>
+<div align=\"center\">
 <h2>Next 7 Day High and Low Tempertures</h2>
-<p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" "width="640" height="480" longdesc="HighTemp.png" />  </p>
+<p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" style="border: #000000 2px solid;" "width="640" height="480" longdesc="HighTemp.png" />  </p>
 <h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover</h2>
-<p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" "width="800" height="600" longdesc="3 hour temps" /> </p>
+<p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" style="border: #000000 2px solid;" "width="800" height="600" longdesc="3 hour temps" /> </p>
+</div>
 <br>
 EOB
 
-print "<a href=$moreInfo>More Weather information for this location here.</a><br>";
+print "<b><a href=$moreInfo>More Weather information for this location here.</a></b><br>";
+
+print <<EOB;
+<hr><br>
+Data Courtesy of National Weather Service, http://www.nws.noaa.gov/ndfd
+<br>
+Send Email and comments to: web at gimmel.org
+<br>
+<i>Copyright &copy; 2013, Tim Gimmel, Henderson, KY 42420</i>
+<br>
+<i>Last modified 24-Nov-2013</i>
+EOB
 
 print $q->end_html();
 
@@ -325,6 +338,29 @@ sub getLatLonfromZip {
     my @latlon = split /,/,$l;
     return @latlon;
 }
+
+#####################################
+# Sub GetCitybyZip
+# Return array with City and State
+# Call with ZipCode String
+# Retrun undef on bad zipcode string
+# Uses www.webservx.net to get data.
+#
+sub getCitybyZip {
+    my $zipcode = shift;
+    unless ($zipcode =~ /^[0-9]{5}$/) { print STDERR "getCitybyZip:zip code format error!\n"; return undef; }
+    my $url = 'http://www.webservicex.net/uszip.asmx/GetInfoByZIP?USZip=';
+    $url .= "$zipcode"; 
+    print "$url \n";
+    my $xml = get($url);
+    my $xz = XML::Simple->new(ForceArray => 1, KeyAttr => []);
+    my $city = $xz->XMLin($xml);
+    print Dumper $city;
+    my $cty = $city->{Table}[0]->{CITY}[0];
+    my $st  = $city->{Table}[0]->{STATE}[0];
+    ($cty, $st);
+}
+
 __END__
 Products:
 $VAR1 = 'Glance';
