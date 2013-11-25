@@ -1,22 +1,35 @@
-<!doctype html>
-<html>
+<!DOCTYPE html
+	PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+	 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en-US" xml:lang="en-US">
 <head>
-<title>"Next 7 Day Weather"</title>
-<meta charset="UTF-8">
-<title>Untitled Document</title>
+<title>Weather Tempertures</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <style type="text/css">
-body {
-	background-color: #666;
+.color1 {
+	color: #0F7FBA;
 }
 </style>
 </head>
+<body bgcolor="#0F7FBA">
+<div align="center"><h1> Weather Temps Next 6 Days</h1></div><hr><form method="post" action="/cgi-bin/ndfd-getwx.pl" enctype="multipart/form-data">
+Enter your Zip Code:<br> <input type="text" name="inzip" value="42420" size="10" maxlength="5" /><br><input type="submit" name="submitZip" value="Get Weather" /></form><br>
 
-<body>
-<p align="left">Next 7 Day Weather</p>
-<p><img src="HighTemp.png" width="640" height="480" longdesc="HighTemp.png" />  </p>
-<p align="left">3 Hour Temperature, Dewpoint, Precent of Cloudcover and Humidity<br>
-  
-  <img src="3hrtmpdp.png" width="1000" height="600" longdesc="3hrtmpdp.png" /></p>
- <a href="http://forecast.weather.gov/MapClick.php?textField1=37.85&textField2=-87.45">More Weather information for this location here.</a>
+
+<br>
+<h2>Next 7 Day High and Low Tempertures</h2>
+<p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" "width="640" height="480" longdesc="HighTemp.png" />  </p>
+<h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover</h2>
+<p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" "width="800" height="600" longdesc="3 hour temps" /> </p>
+<br>
+<a href=http://forecast.weather.gov/MapClick.php?textField1=37.84&textField2=-87.58>More Weather information for this location here.</a><br><hr><br>
+Data Courtesy of National Weather Service, http://www.weather.gov.
+<br>
+Send Email and comments to: web at gimmel.org
+<br>
+<i>Copyright &copy; 2013, Tim Gimmel, Henderson, KY 42420</i>
+<br>
+<i>Last modified 24-Nov-2013</i>
+
 </body>
 </html>
