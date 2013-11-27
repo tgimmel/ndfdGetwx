@@ -3,7 +3,7 @@ use strict;
 use Weather::NWS::NDFDgen;
 use Data::Dumper;
 use XML::Simple qw(:strict);
-use LWP::Simple;
+use LWP::Simple qw(!head);
 use feature qw/say/;
 use Getopt::Std;
 use GD::Graph::linespoints;
@@ -15,9 +15,9 @@ getopts('d');
 
 
 $Data::Dumper::Indent = 3;
-my ($start_t, $end_t, $debug, $c, $d, $timekey);
+my ($start_t, $end_t, $debug, $c, $d, $timekey, $inzip);
 if ($opt_d) { $debug = 1 };
-
+#$debug = 1;
 my $q = CGI->new();
 print $q->header(-title => 'Weather Temps',
 );
@@ -25,7 +25,9 @@ print $q->header(-title => 'Weather Temps',
 print $q->start_html(-title => 'Weather Tempertures',
                    -BGCOLOR => '#0F7FBA',
 );
-print "<div align=\"center\"><h1> Weather Temps Next 6 Days</h1></div>";
+$start_t = scalar localtime(time);
+print "<div align=\"center\"><h1> Weather Temps Next 6 Days</h1>";
+print "<h3>$start_t</h3></div>";
 print "<hr>";
 print $q->start_form();
 print "Enter your Zip Code:<br> ";
@@ -34,23 +36,29 @@ print textfield(-name => 'inzip',
                 -size => 10,
            -maxlength => 5,
 );
-my $inzip = param('inzip');
+$inzip = param('inzip'); 
 print "<br>";
 print submit(-name => 'submitZip',
-             -label => 'Get Weather',
+            -label => 'Get Weather',
 );
+if (!param()) { exit; }   #This hits the first time around!
 print $q->end_form();
 unless ($inzip =~ /^[0-9]{5}$/) { say "Sorry Try again, Zip Code Error!"; }
+#print $q->end_form();
 say "<br>inzip is $inzip" if $debug;
 
-$start_t = scalar localtime(time);
 #$end_t = scalar localtime(time + 604800);    #7 days later
 $end_t = scalar localtime(time + 518400);     #6 days later
 if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
 
 my ($latitude, $longitude) = getLatLonfromZip($inzip);
+my ($city, $state) = getCitybyZip($inzip);
+if ($city eq undef || $state eq undef) { $city = 'Unknown'; $state = 'Unknown'; }
+
 if ($debug) { say "Latitude: $latitude Longitude: $longitude"; }
+if ($debug) { say "City : $city State: $state"; }
+#print "City: $city State: $state <br>";
 
 my $ndfdgen = Weather::NWS::NDFDgen->new();
 #($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
@@ -238,10 +246,9 @@ $graph->set(
    legend_marker_width  => 12,
    legend_marker_height => 12,
       markers           => [ 1, 5 ],
-      #y_label_skip      => 2
   ) or die $graph->error;
 my $cando_ttf = $graph->can_do_ttf();
-if (!$cando_ttf) { print "<h2>WARNING: Cannot render trueType fonts!</h2><br>\n"; }
+if (!$cando_ttf) { print STDERR "WARNING: Cannot render trueType fonts!\n"; }
 
 $graph->set_legend( 'High Temp', 'Low Temp');
 $graph->set_title_font($font_file, 14);
@@ -251,7 +258,7 @@ $graph->set_x_axis_font($font_file, 8);
 $graph->set_y_axis_font($font_file, 10);
 $graph->set_legend_font($font_file, 9);
 my $gd = $graph->plot(\@data) or die $graph->error;
-open(IMG, '>/home/tim/perl/ndfdGetwx/HighTemp.png') or die $!;
+open(IMG, ">", 'HighTemp.png') or die $!;
   binmode IMG;
   print IMG $gd->png;
   close IMG;
@@ -282,7 +289,6 @@ $graph2->set(
       legend_placement  => 'RC',
    legend_marker_width  => 12,
    legend_marker_height => 12
-      #y_label_skip      => 2
   ) or die $graph->error;
 $graph2->set_legend('Temp', 'Dewpoint' , 'Humidity' , ' % Cloudcover');
 
@@ -294,18 +300,18 @@ $graph2->set_y_axis_font($font_file, 10);
 $graph2->set_legend_font($font_file, 9);
 
 my $gd2 = $graph2->plot(\@data2) or die $graph2->error;
-open IMG, ">", "/home/tim/perl/ndfdGetwx/3hrtmpdp.png" or die;
+open IMG, ">", "3hrtmpdp.png" or die;
 binmode IMG;
 print IMG $gd2->png;
-#close;
 
-
+my $mapuri = setmap($latitude, $longitude);
+print STDERR $latitude, $longitude, $mapuri;
 print <<EOB;
-<br>
 <div align=\"center\">
-<h2>Next 7 Day High and Low Tempertures</h2>
-<p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" style="border: #000000 2px solid;" "width="640" height="480" longdesc="HighTemp.png" />  </p>
-<h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover</h2>
+<h2>Next 7 Day High and Low Tempertures <br> $city,  $state</h2>
+<p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" style="border: #000000 2px solid;" "width="640" height="480" longdesc="HighTemp.png" /> 
+<img src="$mapuri" style="border: #000000 1px solid;" width="400" height="480" longdesc="Map of Area"> </p>
+<h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover <br> $city,  $state</h2>
 <p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" style="border: #000000 2px solid;" "width="800" height="600" longdesc="3 hour temps" /> </p>
 </div>
 <br>
@@ -321,12 +327,16 @@ Send Email and comments to: web at gimmel.org
 <br>
 <i>Copyright &copy; 2013, Tim Gimmel, Henderson, KY 42420</i>
 <br>
-<i>Last modified 24-Nov-2013</i>
+<i>Last modified 26-Nov-2013</i>
 EOB
 
 print $q->end_html();
 
-
+####################################
+# Sub getLatLonfromZip
+# Returns an array with Latitude and Longitude
+# Call with Zipcode String
+#
 sub getLatLonfromZip {
     my $zipcode = shift;
     my $url = 'http://graphical.weather.gov/xml/SOAP_server/ndfdXMLclient.php?whichClient=LatLonListZipCode&listZipCodeList=';
@@ -351,14 +361,24 @@ sub getCitybyZip {
     unless ($zipcode =~ /^[0-9]{5}$/) { print STDERR "getCitybyZip:zip code format error!\n"; return undef; }
     my $url = 'http://www.webservicex.net/uszip.asmx/GetInfoByZIP?USZip=';
     $url .= "$zipcode"; 
-    print "$url \n";
     my $xml = get($url);
     my $xz = XML::Simple->new(ForceArray => 1, KeyAttr => []);
     my $city = $xz->XMLin($xml);
-    print Dumper $city;
     my $cty = $city->{Table}[0]->{CITY}[0];
     my $st  = $city->{Table}[0]->{STATE}[0];
     ($cty, $st);
+}
+
+sub setmap {
+   my $lat = shift;
+   my $lon = shift;
+    my $mapuri  = 'http://maps.googleapis.com/maps/api/staticmap?center=';
+    $mapuri .= $lat . ",";
+    $mapuri .= $lon;
+    $mapuri .= '&zoom=11&size=400x480&visual_refresh=%22true%22&scale=1&markers=';
+    $mapuri .= $lat . ",";
+    $mapuri .= $lon . '&key=AIzaSyCo7-PwfPV1mbghcb1FGmwE6SAl-xL_Y14&sensor=false';
+    return $mapuri;
 }
 
 __END__
