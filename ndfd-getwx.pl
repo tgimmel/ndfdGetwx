@@ -15,9 +15,9 @@ getopts('d');
 
 
 $Data::Dumper::Indent = 3;
-my ($start_t, $end_t, $debug, $c, $d, $timekey, $inzip);
+my ($start_t, $end_t, $debug, $c, $d, $timekey, $inzip, $inctyst);
 if ($opt_d) { $debug = 1 };
-#$debug = 1;
+#debug = 1;
 my $q = CGI->new();
 print $q->header(-title => 'Weather Temps',
 );
@@ -30,21 +30,31 @@ print "<div align=\"center\"><h1> Weather Temps Next 6 Days</h1>";
 print "<h3>$start_t</h3></div>";
 print "<hr>";
 print $q->start_form();
-print "Enter your Zip Code:<br> ";
+print "Enter your <b>Zip Code</b>:<br> ";
 print textfield(-name => 'inzip',
-             -default => '42420',
-                -size => 10,
+ #            -default => '42420',
+                -size => 20,
            -maxlength => 5,
 );
-$inzip = param('inzip'); 
-print "<br>";
+print '<br>';
+#print "<br>Or Enter your <b>City, State:</b><br>";
+#print textfield( -name => 'inctyst',
+#                 -size => '20',
+#              -maxlength => 20,
+#);
+$inzip   = param('inzip'); 
+#$inctyst = param('inctyst');
+
+#print "<br>";
 print submit(-name => 'submitZip',
             -label => 'Get Weather',
 );
 if (!param()) { exit; }   #This hits the first time around!
 print $q->end_form();
 unless ($inzip =~ /^[0-9]{5}$/) { say "Sorry Try again, Zip Code Error!"; }
-#print $q->end_form();
+#say $inctyst;
+#my ($incity, $instate) = split /,/, $inctyst;
+#end new citystate
 say "<br>inzip is $inzip" if $debug;
 
 #$end_t = scalar localtime(time + 604800);    #7 days later
@@ -59,7 +69,8 @@ if ($city eq undef || $state eq undef) { $city = 'Unknown'; $state = 'Unknown'; 
 if ($debug) { say "Latitude: $latitude Longitude: $longitude"; }
 if ($debug) { say "City : $city State: $state"; }
 #print "City: $city State: $state <br>";
-
+#Put Zip in the log
+print STDERR "ZipCode:$inzip";
 my $ndfdgen = Weather::NWS::NDFDgen->new();
 #($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
 
