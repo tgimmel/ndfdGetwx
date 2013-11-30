@@ -17,7 +17,7 @@ getopts('d');
 $Data::Dumper::Indent = 3;
 my ($start_t, $end_t, $debug, $c, $d, $timekey, $inzip, $inctyst);
 if ($opt_d) { $debug = 1 };
-#debug = 1;
+#$debug = 1;
 my $q = CGI->new();
 print $q->header(-title => 'Weather Temps',
 );
@@ -32,7 +32,7 @@ print "<hr>";
 print $q->start_form();
 print "Enter your <b>Zip Code</b>:<br> ";
 print textfield(-name => 'inzip',
- #            -default => '42420',
+#             -default => '42420',
                 -size => 20,
            -maxlength => 5,
 );
@@ -42,7 +42,7 @@ print '<br>';
 #                 -size => '20',
 #              -maxlength => 20,
 #);
-$inzip   = param('inzip'); 
+$inzip   = param('inzip');
 #$inctyst = param('inctyst');
 
 #print "<br>";
@@ -53,6 +53,8 @@ if (!param()) { exit; }   #This hits the first time around!
 print $q->end_form();
 unless ($inzip =~ /^[0-9]{5}$/) { say "Sorry Try again, Zip Code Error!"; }
 #say $inctyst;
+#Put Zip in the log
+print STDERR "ZipCode:$inzip";
 #my ($incity, $instate) = split /,/, $inctyst;
 #end new citystate
 say "<br>inzip is $inzip" if $debug;
@@ -68,9 +70,7 @@ if ($city eq undef || $state eq undef) { $city = 'Unknown'; $state = 'Unknown'; 
 
 if ($debug) { say "Latitude: $latitude Longitude: $longitude"; }
 if ($debug) { say "City : $city State: $state"; }
-#print "City: $city State: $state <br>";
-#Put Zip in the log
-print STDERR "ZipCode:$inzip";
+
 my $ndfdgen = Weather::NWS::NDFDgen->new();
 #($latitude, $longitude) = ('37.8531', '-87.4455');  #Home
 
@@ -88,6 +88,7 @@ $ndfdgen->set_weather_parameters(
               'Relative Humidity' => 1,
            '3 Hourly Temperature' => 1,
              'Cloud Cover Amount' => 1,
+                     'Wind Speed' => 1,
 );
 
 
@@ -97,6 +98,7 @@ my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => []);
 
 my $forcast = $xs->XMLin($xml);
 if ($debug) { print Dumper $forcast };
+#say Dumper $forcast;
 #my $s = @{$forcast->{data}[0]->{parameters}[0]->{temperature}[2]->{value}};
 my $params = $forcast->{data}[0]->{parameters}[0]->{temperature};
 
@@ -114,6 +116,8 @@ my $cldamt      = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{va
 my $cldamt_time = $forcast->{data}[0]->{parameters}[0]->{'cloud-amount'}[0]->{'time-layout'};
 my $time        = $forcast->{data}[0]->{'time-layout'};                                #Time Layout hash base
 my $moreInfo    = $forcast->{data}[0]->{moreWeatherInformation}[0]->{content};
+my $windspeed   = $forcast->{data}[0]->{parameters}[0]{'wind-speed'}[0]->{value};
+my $windspeed_time = $forcast->{data}[0]->{parameters}[0]{'wind-speed'}[0]->{'time-layout'};
 my $svt;        #$svt is Start Valid Time
 
 if ($debug) {
@@ -122,6 +126,7 @@ if ($debug) {
     say "3 hour temp time layout $hrtmp_time";
     say "3 hour dewpoint time layout $dp_time";
     say "Humidity temp time layout $hd_time";
+    say "Wind Speed time layout $windspeed_time";
 }
 my %timeinfo;
 
@@ -144,6 +149,7 @@ if ($debug) {
     print Dumper %timeinfo;
 }
 my (@hitemp, @lowtemp, @hrlytmp, @hrlydp, @hrlyhd, @hitemp_time, @lotemp_time, @hrlytmp_time, @cldamt, @hilowtempHeader);
+my (@windspd, @windspd_time);
 my $k = 0;
 my $s = @{$ht};
 unless (!$debug) { print "Scaler $s\n"; }
@@ -232,6 +238,18 @@ for ($c = 0; $c <= (@{$cldamt} - 1); $c++) {
     }
     push(@cldamt, $cldamt->[$c]);
 }
+$k = 0;
+say "Wind Speed <br>" if $debug;
+for ($c =0; $c <= (@{$windspeed} -1); $c++) {
+    print "@{$timeinfo{$windspeed_time}}[$c] " if $debug;
+    $k++;
+    print "$windspeed->[$c] mph " if $debug;
+    if ($k == 4) {
+        print "<br>\n" if $debug;
+        $k = 0;
+   }
+   push(@windspd, $windspeed->[$c]);
+}
 
 my $font_dir = '/usr/share/fonts';
 my $font_file = "$font_dir/truetype/freefont/FreeSans.ttf";
@@ -280,6 +298,7 @@ my @data2 = (
     [@hrlydp],
     [@hrlyhd],
     [@cldamt],
+    [@windspd],
 );
 if ($debug) { print Dumper @data2; }
 my $graph2 = GD::Graph::linespoints->new(1000, 600);
@@ -293,15 +312,15 @@ $graph2->set(
       y_tick_number     => 8,
       show_values       => 1,
       x_labels_vertical => 1,
-      line_types        => [ 1, 1, 2 ],
-      markers           => [ 1, 5, 7, 1 ],
-      dclrs             => [ qw( red green blue cyan) ],
+      line_types        => [ 1, 1, 2, 1, 1 ],
+      markers           => [ 1, 5, 7, 1, 7 ],
+      dclrs             => [ qw(red green blue cyan purple) ],
       long_ticks        => 1,
       legend_placement  => 'RC',
    legend_marker_width  => 12,
    legend_marker_height => 12
   ) or die $graph->error;
-$graph2->set_legend('Temp', 'Dewpoint' , 'Humidity' , ' % Cloudcover');
+$graph2->set_legend('Temp', 'Dewpoint' , 'Humidity' , ' % Cloudcover', 'Wind Speed');
 
 $graph2->set_title_font($font_file, 12);
 $graph2->set_x_label_font($font_file, 10);
@@ -316,7 +335,7 @@ binmode IMG;
 print IMG $gd2->png;
 
 my $mapuri = setmap($latitude, $longitude);
-print STDERR $latitude, $longitude, $mapuri;
+say STDERR $latitude, $longitude, $mapuri;
 print <<EOB;
 <div align=\"center\">
 <h2>Next 7 Day High and Low Tempertures <br> $city,  $state</h2>
@@ -325,6 +344,9 @@ print <<EOB;
 <h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover <br> $city,  $state</h2>
 <p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" style="border: #000000 2px solid;" "width="800" height="600" longdesc="3 hour temps" /> </p>
 </div>
+<!-- Clear Dark Sky image here -->
+<a href=http://cleardarksky.com/c/EvnsvllINkey.html>
+<img src="http://cleardarksky.com/c/EvnsvllINcs0.gif?1"></a>
 <br>
 EOB
 
@@ -334,14 +356,31 @@ print <<EOB;
 <hr><br>
 Data Courtesy of National Weather Service, http://www.nws.noaa.gov/ndfd
 <br>
-Send Email and comments to: web at gimmel.org
+Send Email and comments to: webmaster at gimmel.org
 <br>
 <i>Copyright &copy; 2013, Tim Gimmel, Henderson, KY 42420</i>
 <br>
-<i>Last modified 26-Nov-2013</i>
+<i>Last modified 28-Nov-2013</i>
 EOB
 
 print $q->end_html();
+
+sub getWxdata {            #Not used yet, under heavy construction
+    my ($timeinfo, $wxcdx) = @_;
+    my ($c, $k); 
+    print "3 Hourly Dewpoint <br>\n" if $debug;
+    $k = 0;
+    for ($c = 0; $c <= (@{$dp} - 1); $c++) {
+        print "@{$timeinfo{$dp_time}}[$c] " if $debug;
+        $k++;
+        print "$dp->[$c] F  " if $debug;
+        if ($k == 4) {
+            print " <br>\n" if $debug;
+            $k = 0;
+        }  
+    #    push(@hrlydp, $dp->[$c]);
+    }
+}
 
 ####################################
 # Sub getLatLonfromZip
