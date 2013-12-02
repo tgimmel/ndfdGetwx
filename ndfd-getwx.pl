@@ -54,7 +54,7 @@ print $q->end_form();
 unless ($inzip =~ /^[0-9]{5}$/) { say "Sorry Try again, Zip Code Error!"; }
 #say $inctyst;
 #Put Zip in the log
-print STDERR "ZipCode:$inzip";
+say STDERR "ZipCode:$inzip";
 #my ($incity, $instate) = split /,/, $inctyst;
 #end new citystate
 say "<br>inzip is $inzip" if $debug;
@@ -264,7 +264,7 @@ my $graph = GD::Graph::linespoints->new(640, 480);
 $graph->set(
       x_label           => 'Date-Time',
       y_label           => 'Temperature',
-      title             => "High and Low Temperatures for Lat: $latitude, Long: $longitude",
+      title             => "Zip Code: $inzip  Lat: $latitude Long: $longitude",
       y_max_value       => 100,
       transparent       => 0,
       y_tick_number     => 8,
@@ -305,7 +305,7 @@ my $graph2 = GD::Graph::linespoints->new(1000, 600);
 $graph2->set(
       x_label           => 'Date-Time',
       y_label           => 'Temperature',
-      title             => "Temperature, Dewpoint, Cloudcover and Humidity for Lat: $latitude, Long: $longitude",
+      title             => "Zip code: $inzip  Lat: $latitude, Long: $longitude",
       transparent       => 0,
       bgclr             => 'white',
       y_max_value       => 120,
@@ -341,7 +341,7 @@ print <<EOB;
 <h2>Next 7 Day High and Low Tempertures <br> $city,  $state</h2>
 <p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" style="border: #000000 2px solid;" "width="640" height="480" longdesc="HighTemp.png" /> 
 <img src="$mapuri" style="border: #000000 1px solid;" width="400" height="480" longdesc="Map of Area"> </p>
-<h2>3 Hour Tempertures, Dewpoints, Humidity and Percent Cloudcover <br> $city,  $state</h2>
+<h2>3 Hour Tempertures, Dewpoints, Humidity, Percent Cloudcover and Windspeed <br> $city,  $state</h2>
 <p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" style="border: #000000 2px solid;" "width="800" height="600" longdesc="3 hour temps" /> </p>
 </div>
 <!-- Clear Dark Sky image here -->
@@ -388,6 +388,7 @@ sub getWxdata {            #Not used yet, under heavy construction
 # Call with Zipcode String
 #
 sub getLatLonfromZip {
+    say STDERR "Im in getLatLonfromZip";
     my $zipcode = shift;
     my $url = 'http://graphical.weather.gov/xml/SOAP_server/ndfdXMLclient.php?whichClient=LatLonListZipCode&listZipCodeList=';
     $url .= "$zipcode" . '&Unit=e&Submit=Submit';
@@ -395,6 +396,7 @@ sub getLatLonfromZip {
     my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => []);
     my $latlon = $xs->XMLin($xml);
     my $l = $latlon->{latLonList}[0];
+    say STDERR "getLatLonfromZip: Here is lat/lon $l";
     my @latlon = split /,/,$l;
     return @latlon;
 }
