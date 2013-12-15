@@ -32,7 +32,7 @@ print "<hr>";
 print $q->start_form();
 print "Enter your <b>Zip Code</b>:<br> ";
 print textfield(-name => 'inzip',
-#             -default => '42420',
+             -default => '42458',
                 -size => 20,
            -maxlength => 5,
 );
