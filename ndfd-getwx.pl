@@ -66,7 +66,7 @@ if ($debug) {print "Scalar End Time: $end_t\n";}
 
 my ($latitude, $longitude) = getLatLonfromZip($inzip);
 my ($city, $state) = getCitybyZip($inzip);
-if ($city eq undef || $state eq undef) { $city = 'Unknown'; $state = 'Unknown'; }
+if ($city eq undef || $state eq undef) { $city = 'City Error'; $state = 'State Error'; }
 
 if ($debug) { say "Latitude: $latitude Longitude: $longitude"; }
 if ($debug) { say "City : $city State: $state"; }
@@ -360,7 +360,7 @@ Send Email and comments to: webmaster at gimmel.org
 <br>
 <i>Copyright &copy; 2013, Tim Gimmel, Henderson, KY 42420</i>
 <br>
-<i>Last modified 28-Nov-2013</i>
+<i>Last modified 14-Dec-2013</i>
 EOB
 
 print $q->end_html();
@@ -409,11 +409,19 @@ sub getLatLonfromZip {
 # Uses www.webservx.net to get data.
 #
 sub getCitybyZip {
+    say STDERR "In getCitybyZip";
     my $zipcode = shift;
     unless ($zipcode =~ /^[0-9]{5}$/) { print STDERR "getCitybyZip:zip code format error!\n"; return undef; }
     my $url = 'http://www.webservicex.net/uszip.asmx/GetInfoByZIP?USZip=';
     $url .= "$zipcode"; 
     my $xml = get($url);
+    if ( !$xml ) {
+       say STDERR "getCitybyZip: City Lookup Error!";
+       my $cty = undef;
+       my $st  = undef;
+       return $cty, $st;
+    } 
+    print STDERR "getCityByZip:$xml" if $debug;
     my $xz = XML::Simple->new(ForceArray => 1, KeyAttr => []);
     my $city = $xz->XMLin($xml);
     my $cty = $city->{Table}[0]->{CITY}[0];
