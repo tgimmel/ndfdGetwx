@@ -2,6 +2,7 @@
 use strict;
 use Weather::NWS::NDFDgen;
 use Data::Dumper;
+use Data::Dumper::HTML qw(dumper_html);
 use XML::Simple qw(:strict);
 use LWP::Simple qw(!head);
 use feature qw/say/;
@@ -65,6 +66,10 @@ if ($debug) {print "Scalar Start time: $start_t \n";}
 if ($debug) {print "Scalar End Time: $end_t\n";}
 
 my ($latitude, $longitude) = getLatLonfromZip($inzip);
+    if ($latitude eq undef || $longitude eq undef) {
+        print "Unable to retrive Latitude and Longitude, Please try again. <br>";
+        exit;
+    }
 my ($city, $state) = getCitybyZip($inzip);
 if ($city eq undef || $state eq undef) { $city = 'City Error'; $state = 'State Error'; }
 
@@ -358,34 +363,35 @@ Data Courtesy of National Weather Service, http://www.nws.noaa.gov/ndfd
 <br>
 Send Email and comments to: webmaster at gimmel.org
 <br>
-<i>Copyright &copy; 2013, Tim Gimmel, Henderson, KY 42420</i>
+<i>Copyright &copy; 2013-2014, Tim Gimmel, Henderson, KY 42420</i>
 <br>
-<i>Last modified 14-Dec-2013</i>
+<i>Last modified 25-Jan-2014</i>
 EOB
 
 print $q->end_html();
 
-sub getWxdata {            #Not used yet, under heavy construction
-    my ($timeinfo, $wxcdx) = @_;
-    my ($c, $k); 
-    print "3 Hourly Dewpoint <br>\n" if $debug;
-    $k = 0;
-    for ($c = 0; $c <= (@{$dp} - 1); $c++) {
-        print "@{$timeinfo{$dp_time}}[$c] " if $debug;
-        $k++;
-        print "$dp->[$c] F  " if $debug;
-        if ($k == 4) {
-            print " <br>\n" if $debug;
-            $k = 0;
-        }  
+#sub getWxdata {            #Not used yet, under heavy construction
+#    my ($timeinfo, $wxcdx) = @_;
+#    my ($c, $k); 
+#    print "3 Hourly Dewpoint <br>\n" if $debug;
+#    $k = 0;
+#    for ($c = 0; $c <= (@{$dp} - 1); $c++) {
+#        print "@{$timeinfo{$dp_time}}[$c] " if $debug;
+#        $k++;
+#        print "$dp->[$c] F  " if $debug;
+#        if ($k == 4) {
+#            print " <br>\n" if $debug;
+#            $k = 0;
+#        }  
     #    push(@hrlydp, $dp->[$c]);
-    }
-}
+#    }
+#}
 
 ####################################
 # Sub getLatLonfromZip
 # Returns an array with Latitude and Longitude
 # Call with Zipcode String
+# Returns undef on error
 #
 sub getLatLonfromZip {
     say STDERR "Im in getLatLonfromZip";
@@ -393,9 +399,16 @@ sub getLatLonfromZip {
     my $url = 'http://graphical.weather.gov/xml/SOAP_server/ndfdXMLclient.php?whichClient=LatLonListZipCode&listZipCodeList=';
     $url .= "$zipcode" . '&Unit=e&Submit=Submit';
     my $xml = get($url);
+    if (!$xml) {
+        print STDERR "getLatLonfromZip: No XML Data, zipcode was $zipcode";
+        my @latlon = undef;
+        return;
+    }
     my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => []);
     my $latlon = $xs->XMLin($xml);
+    print dumper_html($latlon) if $debug;
     my $l = $latlon->{latLonList}[0];
+    if ($l eq '') { return undef; }
     say STDERR "getLatLonfromZip: Here is lat/lon $l";
     my @latlon = split /,/,$l;
     return @latlon;
@@ -406,26 +419,38 @@ sub getLatLonfromZip {
 # Return array with City and State
 # Call with ZipCode String
 # Retrun undef on bad zipcode string
-# Uses www.webservx.net to get data.
+# Returns undef if unable to lookup city state
+# 1/26/2014 Changes:
+# no longer Uses www.webservx.net to get data.
+# Now using maps.googleapis.com geoloaction data to find city from zipcode
+# TODO: Work out locatities,  State does not always occure in the same locaton.
 #
 sub getCitybyZip {
     say STDERR "In getCitybyZip";
     my $zipcode = shift;
     unless ($zipcode =~ /^[0-9]{5}$/) { print STDERR "getCitybyZip:zip code format error!\n"; return undef; }
-    my $url = 'http://www.webservicex.net/uszip.asmx/GetInfoByZIP?USZip=';
-    $url .= "$zipcode"; 
+    #http://maps.googleapis.com/maps/api/geocode/xml?components=postal_code:42458|country:US&sensor=false
+    my $url = 'http://maps.googleapis.com/maps/api/geocode/xml?components=postal_code:';
+    $url .= "$zipcode";
+    $url .= '|country:US';
+    $url .= '&sensor=false';
     my $xml = get($url);
+    #print Dumper dumper_html($xml) if $debug;
     if ( !$xml ) {
-       say STDERR "getCitybyZip: City Lookup Error!";
-       my $cty = undef;
-       my $st  = undef;
+       say STDERR "getCitybyZip: City Lookup Error, No XML Data!";
+       my ($cty, $st) = undef, undef;
        return $cty, $st;
     } 
-    print STDERR "getCityByZip:$xml" if $debug;
     my $xz = XML::Simple->new(ForceArray => 1, KeyAttr => []);
     my $city = $xz->XMLin($xml);
-    my $cty = $city->{Table}[0]->{CITY}[0];
-    my $st  = $city->{Table}[0]->{STATE}[0];
+    if ($city->{status}[0] ne 'OK') {
+        my ($cty, $st) = undef, undef;
+        print STDERR "getCitybyZip: City Lookup Error, status = $city->{status}[0]\n";
+        return $cty, $st;
+    }
+    my $cty = $city->{result}[0]->{address_component}[1]->{long_name}[0];
+    my $st  = $city->{result}[0]->{address_component}[2]->{short_name}[0];
+    print dumper_html($city) if $debug;
     ($cty, $st);
 }
 
