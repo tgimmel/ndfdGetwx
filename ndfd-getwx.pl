@@ -343,10 +343,10 @@ my $mapuri = setmap($latitude, $longitude);
 say STDERR $latitude, $longitude, $mapuri;
 print <<EOB;
 <div align=\"center\">
-<h2>Next 7 Day High and Low Tempertures <br> $city,  $state</h2>
+<h2>Next 7 Day High and Low Temperatures <br> $city,  $state</h2>
 <p><img src="http://banger.gimmel.org:41959/cgi-bin/HighTemp.pl" style="border: #000000 2px solid;" "width="640" height="480" longdesc="HighTemp.png" /> 
 <img src="$mapuri" style="border: #000000 1px solid;" width="400" height="480" longdesc="Map of Area"> </p>
-<h2>3 Hour Tempertures, Dewpoints, Humidity, Percent Cloudcover and Windspeed <br> $city,  $state</h2>
+<h2>3 Hour Temperatures, Dewpoints, Humidity, Percent Cloudcover and Windspeed <br> $city,  $state</h2>
 <p><img src="http://banger.gimmel.org:41959/cgi-bin/3hrtmpdp.pl" style="border: #000000 2px solid;" "width="800" height="600" longdesc="3 hour temps" /> </p>
 </div>
 <!-- Clear Dark Sky image here -->
@@ -365,7 +365,7 @@ Send Email and comments to: webmaster at gimmel.org
 <br>
 <i>Copyright &copy; 2013-2014, Tim Gimmel, Henderson, KY 42420</i>
 <br>
-<i>Last modified 25-Jan-2014</i>
+<i>Last modified 11-Mar-2014</i>
 EOB
 
 print $q->end_html();
